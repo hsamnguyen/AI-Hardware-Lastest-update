@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Example GPU Update",
+    "company": "NVIDIA",
+    "date": "2025-07-20",
+    "description": "New GPU for faster AI training",
+    "hardware_type": "GPU",
+    "significance": "Faster Training",
+    "link": "https://example.com"
+  }
+]

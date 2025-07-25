@@ -1,0 +1,38 @@
+name: Update AI Hardware Tracker
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at 0:00 UTC
+  workflow_dispatch:     # Allow manual runs
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install feedparser  # Required for RSS
+
+      - name: Run fetch script
+        run: python scripts/fetch_hardware.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "AI Hardware Bot"
+          git config --global user.email "bot@example.com"
+          git add README.md data/hardware_data.json
+          git commit -m "Auto update AI hardware developments" || echo "No changes to commit"
+          git push
+
+      - name: Handle failure
+        if: failure()
+        run: echo "Workflow failed"
