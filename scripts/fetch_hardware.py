@@ -2,19 +2,19 @@ import json
 import os
 import re
 import feedparser  # For RSS
-from datetime import datetime  # For date handling
+from datetime import datetime
 
-# Updated RSS sources for better AI hardware coverage
+# RSS sources (unchanged)
 RSS_SOURCES = [
-    "https://nvidianews.nvidia.com/rss",  # NVIDIA hardware
-    "https://ai.googleblog.com/feeds/posts/default",  # Google AI/TPU
-    "https://arxiv.org/rss/cs.AR",  # arXiv architecture/hardware
-    "https://www.wired.com/tag/artificial-intelligence/rss",  # WIRED AI (hardware news)
-    "https://techcrunch.com/tag/artificial-intelligence/feed/",  # TechCrunch AI (chips/accelerators)
-    "https://venturebeat.com/category/ai/feed/"  # VentureBeat AI (hardware developments)
+    "https://nvidianews.nvidia.com/rss",
+    "https://ai.googleblog.com/feeds/posts/default",
+    "https://arxiv.org/rss/cs.AR",
+    "https://www.wired.com/tag/artificial-intelligence/rss",
+    "https://techcrunch.com/tag/artificial-intelligence/feed/",
+    "https://venturebeat.com/category/ai/feed/"
 ]
 
-# Updated keyword mappings
+# Updated keywords
 HARDWARE_TYPES = {
     "gpu": "GPU",
     "tpu": "TPU",
@@ -23,7 +23,9 @@ HARDWARE_TYPES = {
     "edge": "Edge Device",
     "fpga": "FPGA",
     "chip": "Chip/Processor",
-    "accelerator": "AI Accelerator"
+    "accelerator": "AI Accelerator",
+    "semiconductor": "Semiconductor",
+    "blackwell": "GPU Accelerator"
 }
 SIGNIFICANCE_KEYWORDS = {
     "training": "Faster Training",
@@ -33,7 +35,8 @@ SIGNIFICANCE_KEYWORDS = {
     "speed": "Higher Performance",
     "scalability": "Better Scalability",
     "efficiency": "Energy Efficiency",
-    "computing": "Enhanced Computing"
+    "computing": "Enhanced Computing",
+    "mi300": "High Performance AI"
 }
 
 # Function to infer fields
@@ -56,18 +59,24 @@ def infer_fields(text):
 # Function to fetch from RSS
 def fetch_from_rss():
     new_developments = []
+    min_date = datetime(2025, 1, 1)  # Filter for 2025+
     for url in RSS_SOURCES:
         feed = feedparser.parse(url)
-        for entry in feed.entries[:5]:
+        for entry in feed.entries:  # Fetch all, no limit
             title_lower = entry.title.lower()
             desc_lower = entry.get('description', entry.get('summary', '')).lower()
-            # Expanded filter for AI hardware
-            if any(term in title_lower or term in desc_lower for term in ['ai', 'artificial intelligence', 'hardware', 'chip', 'processor', 'accelerator', 'quantum', 'edge device', 'gpu', 'tpu']):
+            if any(term in title_lower or term in desc_lower for term in ['ai', 'artificial intelligence', 'hardware', 'chip', 'processor', 'accelerator', 'quantum', 'edge device', 'gpu', 'tpu', 'semiconductor', 'blackwell', 'mi300']):
                 title = entry.title
                 link = entry.link
                 date_str = entry.published[:10] if 'published' in entry else datetime.today().strftime('%Y-%m-%d')
+                try:
+                    entry_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    if entry_date < min_date:
+                        continue  # Skip old
+                except ValueError:
+                    continue
                 description = entry.summary[:150] + '...' if 'summary' in entry else (entry.description[:150] + '...' if 'description' in entry else title)
-                company_match = re.search(r'(NVIDIA|Google|Intel|AMD|WIRED|TechCrunch|VentureBeat|arXiv)', title + description, re.IGNORECASE)
+                company_match = re.search(r'(NVIDIA|Google|Intel|AMD|WIRED|TechCrunch|VentureBeat|arXiv|HP|Microsoft)', title + description, re.IGNORECASE)
                 company = company_match.group(1) if company_match else "Unknown"
                 hardware_type, significance = infer_fields(title + ' ' + description)
                 new_developments.append({
@@ -93,8 +102,7 @@ def main():
 
     added = False
     for dev in new_developments:
-        # Duplicate check on title + date
-        if not any(d['name'] == dev['name'] and d['date'] == dev['date'] for d in existing):
+        if not any(d['link'] == dev['link'] or (d['name'] == dev['name'] and d['date'] == dev['date']) for d in existing):
             existing.append(dev)
             added = True
 
